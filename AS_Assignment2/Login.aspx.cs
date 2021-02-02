@@ -21,9 +21,19 @@ namespace AS_Assignment2
 
         protected void Page_Load(object sender, EventArgs e)
         {
+            if (Session["email"] != null)
+            {
+                throw new HttpException(403, "Click on continue to see it on the webpage!");
+            }
+
             if (Request.QueryString["registered"] == "true")
             {
                 lbMsg.Text = "Successfully registered";
+                PanelMsg.Visible = true;
+            }
+            else if (Request.QueryString["passwordChanged"] == "true")
+            {
+                lbMsg.Text = "Password changed. Please sign in again!";
                 PanelMsg.Visible = true;
             }
         }
@@ -38,6 +48,16 @@ namespace AS_Assignment2
                 string dbHash = getDBHash(email);
                 string dbSalt = getDBSalt(email);
                 string errorMsg = "";
+                DateTime unlockTime = getUnlockTime(email);
+                DateTime notLockedTiming = Convert.ToDateTime("1/1/2001");
+
+                // Check whether account is locked
+                // If account unlock time has exceeded, reset loginCount to 0
+                if (unlockTime != notLockedTiming && DateTime.Now > unlockTime)
+                {
+                    unlockAccount(email);
+                }
+
                 try
                 {
                     if (dbSalt != null && dbSalt.Length > 0 && dbHash != null && dbHash.Length > 0)
@@ -71,8 +91,23 @@ namespace AS_Assignment2
                                 command.ExecuteNonQuery();
                                 connection.Close();
 
+                                // Before login, check whether need to change password due to maximum password age (15mins)
+                                
+                                DateTime lastPassSet = getDBLastPassSet(email);
+                                DateTime invalidLastPassSet = Convert.ToDateTime("1/1/2001");
 
-                                Response.Redirect("home.aspx", false);
+                                if (DateTime.Now > lastPassSet.AddMinutes(15) && lastPassSet != invalidLastPassSet)
+                                {
+                                    Session["exceededMaxPasswordAge"] = "exceeded";
+                                    Response.Redirect("changePassword.aspx?exceededMaxPasswordAge=exceeded", false);
+                                }
+                                else
+                                {
+                                    Response.Redirect("home.aspx", false);
+                                }
+
+
+                                    
                             }
                             else
                             {
@@ -92,9 +127,19 @@ namespace AS_Assignment2
                                 // wrong password at the 3rd time.
                                 if (loginCount == 2)
                                 {
-                                    lbl_msg.Text = "You have exceeded the maximum login attempt, your account will now be locked out until "; //+ unlockTime;
+                                    DateTime lockout = DateTime.Now.AddMinutes(5);
+                                    lbl_msg.Text = "You have exceeded the maximum login attempt, your account will now be locked out until " + lockout;
 
                                     // Set automatic account unlock time at now + 5minutes
+                                    string query = "UPDATE [User] SET unlockTime = @paraUnlockTime WHERE Email=@email";
+                                    SqlCommand sqlcommand = new SqlCommand(query, connection);
+                                    sqlcommand.Parameters.AddWithValue("@paraUnlockTime", DateTime.Now.AddMinutes(5));
+                                    sqlcommand.Parameters.AddWithValue("@email", email);
+
+                                    sqlcommand.Connection = connection;
+                                    connection.Open();
+                                    sqlcommand.ExecuteNonQuery();
+                                    connection.Close();
                                 }
                                 else
                                 {
@@ -104,11 +149,8 @@ namespace AS_Assignment2
                         }
                         else
                         {
-                            // Check if account lockout has expired yet, if expired, reset counter and attempt login again
-
-
                             // If it has already exceeded
-                            lbl_msg.Text = "You have exceeded the maximum login attempt, your account will now be locked out until ";  //+ unlockTime;
+                            lbl_msg.Text = "You have exceeded the maximum login attempt, your account will now be locked out until " + unlockTime;
 
                             // This part is just to continue incrementing it, by right don't need this for it to work, but useful to check for rainbow table / bruteforce attacks.
                             SqlConnection connection = new SqlConnection(SITConnectConnection);
@@ -130,6 +172,27 @@ namespace AS_Assignment2
                 }
                 finally { }
             }
+        }
+
+        protected void unlockAccount(string email)
+        {
+            DateTime unlockTime = Convert.ToDateTime("1/1/2001");
+
+            SqlConnection connection = new SqlConnection(SITConnectConnection);
+            string sql = "UPDATE [User] SET unlockTime = @paraUnlockTime WHERE Email=@email";
+            string sql2 = "UPDATE [User] SET loginAttempt = 0 WHERE Email=@email";
+            SqlCommand command = new SqlCommand(sql, connection);
+            SqlCommand command2 = new SqlCommand(sql2, connection);
+            command.Parameters.AddWithValue("@email", email);
+            command.Parameters.AddWithValue("@paraUnlockTime", unlockTime);
+            command2.Parameters.AddWithValue("@email", email);
+
+            command.Connection = connection;
+            command2.Connection = connection;
+            connection.Open();
+            command.ExecuteNonQuery();
+            command2.ExecuteNonQuery();
+            connection.Close();
         }
 
         protected int getLoginAttempt(string email)
@@ -167,6 +230,44 @@ namespace AS_Assignment2
             }
             finally { connection.Close(); }
             return count;
+
+        }
+
+        protected DateTime getUnlockTime(string email)
+        {
+            SqlConnection connection = new SqlConnection(SITConnectConnection);
+            string sql = "SELECT unlockTime FROM [User] WHERE Email=@email";
+            SqlCommand command = new SqlCommand(sql, connection);
+            command.Parameters.AddWithValue("@email", email);
+
+            DateTime unlockTime = Convert.ToDateTime("1/1/2001");
+
+            try
+            {
+                connection.Open();
+                using (SqlDataReader reader = command.ExecuteReader())
+                {
+
+                    while (reader.Read())
+                    {
+                        if (reader["unlockTime"] != null)
+                        {
+                            if (reader["unlockTime"] != DBNull.Value)
+                            {
+                                String unlockTimeStr = reader["unlockTime"].ToString();
+                                unlockTime = DateTime.Parse(unlockTimeStr);
+                            }
+                        }
+                    }
+
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception(ex.ToString());
+            }
+            finally { connection.Close(); }
+            return unlockTime;
 
         }
 
@@ -280,6 +381,44 @@ namespace AS_Assignment2
             }
         }
 
+        protected DateTime getDBLastPassSet(string email)
+        {
+
+            DateTime lastPassSet = Convert.ToDateTime("1/1/2001");
+
+            SqlConnection connection = new SqlConnection(SITConnectConnection);
+            string sql = "Select lastPassSet FROM [User] WHERE Email=@email";
+            SqlCommand command = new SqlCommand(sql, connection);
+            command.Parameters.AddWithValue("@email", email);
+            try
+            {
+                connection.Open();
+                using (SqlDataReader reader = command.ExecuteReader())
+                {
+
+                    while (reader.Read())
+                    {
+                        if (reader["lastPassSet"] != null)
+                        {
+                            if (reader["lastPassSet"] != DBNull.Value)
+                            {
+                                string str = reader["lastPassSet"].ToString();
+                                lastPassSet = DateTime.Parse(str);
+                            }
+                        }
+                    }
+
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception(ex.ToString());
+            }
+            finally { connection.Close(); }
+            return lastPassSet;
+        }
+
     }
+
 
 }

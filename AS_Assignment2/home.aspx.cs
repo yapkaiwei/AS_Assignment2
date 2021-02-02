@@ -27,6 +27,15 @@ namespace AS_Assignment2
                 }
                 else
                 {
+                    if (Session["exceededMaxPasswordAge"] != null)
+                    {
+                        if (Session["exceededMaxPasswordAge"].ToString() == "exceeded")
+                        {
+                            Response.Redirect("~/changePassword.aspx?exceededMaxPasswordAge=exceeded");
+                        }
+                    }
+                    
+
                     lbMsg.Text = "Successfully logged in";
                     PanelMsg.Visible = true;
                     div_loggedIn.Visible = true;

@@ -31,7 +31,13 @@ namespace AS_Assignment2
 
         protected void Page_Load(object sender, EventArgs e)
         {
+            if (Session["email"] != null)
+            {
+                throw new HttpException(403, "Click on continue to see it on the webpage!");
+            }
+
             tb_dob.Attributes["max"] = DateTime.Now.AddYears(-10).ToString("yyyy-MM-dd");
+            tb_dob.Attributes["min"] = DateTime.Now.AddYears(-100).ToString("yyyy-MM-dd");
 
         }
 
@@ -60,6 +66,10 @@ namespace AS_Assignment2
             if (!Regex.IsMatch(password, "[^A-Za-z0-9]"))
             {
                 passRequirementMsg += "Password require at least 1 special character" + "<br/>";
+            }
+            if (!password.Equals(tb_confirmPassword.Text.ToString()))
+            {
+                passRequirementMsg += "Password does not match with confirm password" + "<br/>";
             }
 
             return passRequirementMsg;
@@ -99,6 +109,13 @@ namespace AS_Assignment2
         protected bool validate()
         {
             bool validated = true;
+            lbl_emailMsg.Text = "";
+            lbl_fNameMsg.Text = "";
+            lbl_lNameMsg.Text = "";
+            lbl_msg.Text = "";
+            lbl_ccNumMsg.Text = "";
+            lbl_ccExpiryMsg.Text = "";
+            lbl_ccCVVMsg.Text = "";
 
             string passRequirementMsg = checkPassword(tb_password.Text);
 
@@ -120,13 +137,13 @@ namespace AS_Assignment2
 
 
             // Validate first name and last name, only allow 1 to 50 characters. What are the chances that there's someone whose first name is more than 50 letters?
-            if (!Regex.IsMatch(tb_fName.Text, "^[A-Za-z]{1,50}$"))
+            if (!Regex.IsMatch(tb_fName.Text, "^[A-Za-z\u0020]{1,50}$"))
             {
                 lbl_fNameMsg.Text = "First name is invalid or too long";
                 validated = false;
             }
 
-            if (!Regex.IsMatch(tb_lName.Text, "^[A-Za-z]{1,50}$"))
+            if (!Regex.IsMatch(tb_lName.Text, "^[A-Za-z\u0020]{1,50}$"))
             {
                 lbl_lNameMsg.Text = "Last name is invalid or too long";
                 validated = false;
@@ -161,11 +178,12 @@ namespace AS_Assignment2
             }
 
             // Validate credit card CVV
+            if (!Regex.IsMatch(tb_ccCVV.Text, "^[0-9]{3}$"))
             {
-                if (!Regex.IsMatch(tb_ccCVV.Text, "^[0-9]{3}$"))
-                    lbl_ccCVVMsg.Text = "CVV is invalid!";
+                lbl_ccCVVMsg.Text = "CVV is invalid!";
                 validated = false;
             }
+
 
             return validated;
 
@@ -224,19 +242,21 @@ namespace AS_Assignment2
             {
 
                 DateTime dob = Convert.ToDateTime(tb_dob.Text);
+                DateTime unlockTime = Convert.ToDateTime("1/1/2001");
 
                 using (SqlConnection con = new SqlConnection(SITConnectConnection))
                 {
                     using (SqlCommand cmd = new SqlCommand("INSERT INTO [User] VALUES(@paraEmail,@paraFirstName,@paraLastName,@paraDoB,@paraPassHash," +
                         "@paraPassSalt,@paraCCNumber,@paraCCExpiry,@paraCCCVV,@paraCCNumberIV," +
-                        "@paraCCNumberKey,@paraCCExpiryIV,@paraCCExpiryKey,@paraCCCVVIV,@paraCCCVVKey, @paraLoginAttempt)"))
+                        "@paraCCNumberKey,@paraCCExpiryIV,@paraCCExpiryKey,@paraCCCVVIV,@paraCCCVVKey, @paraLoginAttempt," +
+                        "@paraUnlockTime, null, null, @paraLastPassSet)"))
                     {
                         using (SqlDataAdapter sda = new SqlDataAdapter())
                         {
                             cmd.CommandType = CommandType.Text;
                             cmd.Parameters.AddWithValue("@paraEmail", tb_email.Text.Trim());
-                            cmd.Parameters.AddWithValue("@paraFirstName", tb_fName.Text.Trim());
-                            cmd.Parameters.AddWithValue("@paraLastName", tb_lName.Text.Trim());
+                            cmd.Parameters.AddWithValue("@paraFirstName", tb_fName.Text);
+                            cmd.Parameters.AddWithValue("@paraLastName", tb_lName.Text);
                             cmd.Parameters.AddWithValue("@paraDoB", dob);
                             cmd.Parameters.AddWithValue("@paraPassHash", finalHash);
                             cmd.Parameters.AddWithValue("@paraPassSalt", salt);
@@ -250,6 +270,8 @@ namespace AS_Assignment2
                             cmd.Parameters.AddWithValue("@paraCCCVVIV", Convert.ToBase64String(ccCVVIV));
                             cmd.Parameters.AddWithValue("@paraCCCVVKey", Convert.ToBase64String(ccCVVKey));
                             cmd.Parameters.AddWithValue("@paraLoginAttempt", 0);
+                            cmd.Parameters.AddWithValue("@paraUnlockTime", unlockTime);
+                            cmd.Parameters.AddWithValue("@paraLastPassSet", DateTime.Now);
                             cmd.Connection = con;
                             con.Open();
                             cmd.ExecuteNonQuery();
@@ -368,6 +390,7 @@ namespace AS_Assignment2
                 throw ex;
             }
         }
+
 
 
     }

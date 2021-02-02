@@ -68,6 +68,7 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="400.aspx" />
+    <Content Include="changePassword.aspx" />
     <Content Include="CustomError\HTTP403.html" />
     <Content Include="CustomError\HTTP500.html" />
     <Content Include="CustomError\HTTP400.html" />
@@ -76,7 +77,6 @@
     <Content Include="images\SITConnect.png" />
     <Content Include="Login.aspx" />
     <Content Include="Register.aspx" />
-    <Content Include="admin.aspx" />
     <Content Include="Web.config" />
   </ItemGroup>
   <ItemGroup>
@@ -86,6 +86,13 @@
     </Compile>
     <Compile Include="400.aspx.designer.cs">
       <DependentUpon>400.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="changePassword.aspx.cs">
+      <DependentUpon>changePassword.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="changePassword.aspx.designer.cs">
+      <DependentUpon>changePassword.aspx</DependentUpon>
     </Compile>
     <Compile Include="home.aspx.cs">
       <DependentUpon>home.aspx</DependentUpon>
@@ -109,13 +116,6 @@
     </Compile>
     <Compile Include="Register.aspx.designer.cs">
       <DependentUpon>Register.aspx</DependentUpon>
-    </Compile>
-    <Compile Include="admin.aspx.cs">
-      <DependentUpon>admin.aspx</DependentUpon>
-      <SubType>ASPXCodeBehind</SubType>
-    </Compile>
-    <Compile Include="admin.aspx.designer.cs">
-      <DependentUpon>admin.aspx</DependentUpon>
     </Compile>
   </ItemGroup>
   <ItemGroup>

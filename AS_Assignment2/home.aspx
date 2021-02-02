@@ -57,6 +57,7 @@
             <h4>Here are your details :</h4>
             <p>Email: <asp:Label ID="lbl_email" runat="server"></asp:Label></p>
             <p>Date of Birth: <asp:Label ID="lbl_dob" runat="server"></asp:Label></p>
+            <a runat="server" href="~/changePassword.aspx" class="mb-5 btn btn-warning">Change Password</a>
         </div>
         
 
