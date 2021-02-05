@@ -133,6 +133,7 @@ namespace AS_Assignment2
             if (emailExist(tb_email.Text.ToString()))
             {
                 lbl_emailMsg.Text = "Email already exists!";
+                validated = false;
             }
 
 

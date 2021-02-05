@@ -111,6 +111,7 @@
 
             if (emailStr.search(/^([a-zA-Z0-9_\-\.]+)@([a-zA-Z0-9_\-\.]+)\.([a-zA-Z]{2,5})$/) == -1) {
                 document.getElementById("lbl_emailMsg").innerHTML = "Invalid email address";
+                document.getElementById("lbl_emailMsg").style.color = "Red";
                 return ("Wrong_email_format");
             }
 
